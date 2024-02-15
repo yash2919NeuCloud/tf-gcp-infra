@@ -34,3 +34,6 @@ override.tf.json
 terraform.rc
 
 key_Terraform.json
+*.lock.hcl
+.terraform.lock.hcl
+*.hcl

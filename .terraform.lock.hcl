@@ -17,5 +17,5 @@ provider "registry.terraform.io/hashicorp/google" {
     "zh:f159beb34a08fea7b607bf469a2cff8e28ecc8c7dde3ecd96436589661d93f0b",
     "zh:f569b65999264a9416862bca5cd2a6177d94ccb0424f3a4ef424428912b9cb3c",
     "zh:f680e5ba7404ca2e24087a8f6076a2e33a721727684cc7862684265eb0d4c5fd",
-  ]
+   ]
 }
