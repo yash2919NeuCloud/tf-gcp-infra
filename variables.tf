@@ -14,7 +14,7 @@ variable "region" {
 
 variable "vpc_name" {
   description = "Name of the VPC"
-  default     = "my-vpc"
+  default     = "my-vpc-1"
 }
 
 variable "webapp_subnet_name" {
@@ -113,5 +113,77 @@ variable "boot_disk_size" {
 variable "boot_disk_type" {
   description = "The type of the boot disk"
   default     = "pd-balanced"
+}
+
+variable "global_address_name" {
+  description = "Name of the global address"
+  default     = "private-ip-address"
+}
+
+variable "global_address_purpose" {
+  description = "Purpose of the global address"
+  default     = "VPC_PEERING"
+}
+
+variable "global_address_type" {
+  description = "Type of the global address"
+  default     = "INTERNAL"
+}
+
+variable "global_address_prefix_length" {
+  description = "Prefix length of the global address"
+  default     = 16
+}
+
+variable "service_name" {
+  description = "The name of the service"
+  default     = "servicenetworking.googleapis.com"
+}
+variable "sql_instance_name" {
+  description = "The name of the SQL instance."
+  type        = string
+  default     = "sqlinstance"
+}
+
+variable "disk_size_gb" {
+  description = "The size of the disk in GB for the SQL instance."
+  type        = number
+  default     = 100
+}
+
+variable "sql_machine_type" {
+  description = "The machine type for the SQL instance."
+  type        = string
+  default     = "db-f1-micro"
+}
+variable "availability_type" {
+  description = "The availability type for the SQL instance."
+  type        = string
+  default     = "REGIONAL"
+}
+variable "disk_type" {
+  description = "The disk type for the SQL instance."
+  type        = string
+  default     = "pd-ssd"
+}
+variable "database_name" {
+  description = "The name of the SQL database."
+  type        = string
+  default     = "webapp"
+}
+variable "database_user_name" {
+  description = "The name of the SQL user."
+  type        = string
+  default     = "webapp"
+}
+variable "database_user_password_length" {
+  description = "The length of the SQL user password."
+  type        = number
+  default     = 16
+}
+variable "database_version" {
+  description = "The version of the MySQL database."
+  type        = string
+  default     = "MYSQL_8_0"
 }
 
