@@ -57,8 +57,13 @@ resource "google_compute_firewall" "restrict_ssh" {
   source_ranges = [var.source_ranges]
 }
 
-resource "google_project_service" "service_networking" {
-  service = "servicenetworking.googleapis.com"
+# resource "google_project_service" "service_networking" {
+#   service = "servicenetworking.googleapis.com"
+# }
+
+resource "google_service_account" "service_account" {
+  account_id   = "service-account-1"
+  display_name = "Service Account"
 }
 resource "google_compute_instance" "instance-1" {
   machine_type = var.machine_type
@@ -71,6 +76,11 @@ resource "google_compute_instance" "instance-1" {
     db_database = google_sql_database.webapp_db.name,
     db_user     = google_sql_user.webapp_db_user.name
   })
+
+  service_account {
+    email  = google_service_account.service_account.email
+    scopes = ["cloud-platform"]
+  }
 
   depends_on = [
     google_sql_database_instance.example_instance
@@ -93,6 +103,38 @@ resource "google_compute_instance" "instance-1" {
     }
 
   }
+}
+
+resource "google_project_iam_binding" "logging_admin_binding" {
+  project = var.project_id
+  role    = "roles/logging.admin"
+
+  members = [
+    "serviceAccount:${google_service_account.service_account.email}"
+  ]
+}
+
+resource "google_project_iam_binding" "monitoring_metric_writer_binding" {
+  project = var.project_id
+  role    = "roles/monitoring.metricWriter"
+
+  members = [
+    "serviceAccount:${google_service_account.service_account.email}"
+  ]
+}
+
+# resource "google_dns_managed_zone" "dns_zone" {
+#   name        = "yash-nahata"
+#   dns_name    = "yashnahata.me."
+#   description = "Your DNS Zone"
+# }
+
+resource "google_dns_record_set" "dns_record" {
+  name         = var.dns_record
+  type         = "A"
+  ttl          = var.ttl
+  managed_zone = var.managed_zone
+  rrdatas      = [google_compute_instance.instance-1.network_interface.0.access_config.0.nat_ip]
 }
 
 
@@ -150,7 +192,7 @@ resource "google_sql_database" "webapp_db" {
 
 resource "random_password" "webapp_db_password" {
   length  = var.database_user_password_length
-  special = true
+  special = false
 }
 resource "google_sql_user" "webapp_db_user" {
   name     = var.database_user_name
