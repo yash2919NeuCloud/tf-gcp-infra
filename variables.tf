@@ -154,7 +154,7 @@ variable "disk_size_gb" {
 variable "sql_machine_type" {
   description = "The machine type for the SQL instance."
   type        = string
-  default     = "db-f1-micro"
+  default     = "db-n1-standard-1"
 }
 variable "availability_type" {
   description = "The availability type for the SQL instance."
@@ -185,5 +185,22 @@ variable "database_version" {
   description = "The version of the MySQL database."
   type        = string
   default     = "MYSQL_8_0"
+}
+variable "dns_record" {
+  description = "dns_record"
+  type        = string
+  default     = "yashnahata.me."
+}
+
+variable "managed_zone" {
+  description = "managed_zone"
+  type        = string
+  default     = "yash-nahata"
+}
+
+variable "ttl" {
+  description = "ttl"
+  type        = number
+  default     = 300
 }
 
