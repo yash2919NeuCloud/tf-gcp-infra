@@ -14,7 +14,7 @@ variable "region" {
 
 variable "vpc_name" {
   description = "Name of the VPC"
-  default     = "my-vpc-1"
+  default     = "my-vpc-3"
 }
 
 variable "webapp_subnet_name" {
@@ -204,3 +204,106 @@ variable "ttl" {
   default     = 300
 }
 
+variable "key" {
+  type = string
+}
+
+variable "entry_point" {
+  type    = string
+  default = "helloPubSub"
+}
+
+variable "max_instance_count" {
+  description = "max_instance_count"
+  type        = number
+  default     = 1
+}
+
+variable "timeout_seconds" {
+  type    = string
+  default = "60"
+}
+
+variable "available_memory" {
+  type    = string
+  default = "256M"
+}
+variable "runtime" {
+  type    = string
+  default = "nodejs20"
+}
+
+variable "min_instances" {
+  description = "min_instances"
+  type        = number
+  default     = 2
+}
+
+variable "max_instances" {
+  description = "max_instances"
+  type        = number
+  default     = 3
+}
+
+
+variable "machine_type_vpc_connector" {
+  type    = string
+  default = "f1-micro"
+
+}
+
+variable "message_retention_duration" {
+  type    = string
+  default = "604800s"
+}
+
+variable "src" {
+  type    = string
+  default = "C:/Users/yashn/Downloads/cloud_func.zip"
+}
+
+variable "ack_deadline_seconds" {
+  type    = number
+  default = 10
+
+}
+
+variable "ip_cidr_range" {
+  type    = string
+  default = "10.8.0.0/28"
+
+}
+variable "google_pubsub_topic_name" {
+  type    = string
+  default = "verify_email"
+
+}
+
+variable "google_storage_bucket_name" {
+  type    = string
+  default = "yash-bucket-cloud-291"
+
+}
+
+variable "location" {
+  type    = string
+  default = "US"
+
+}
+
+variable "retry_policy" {
+
+  type    = string
+  default = "RETRY_POLICY_RETRY"
+
+}
+variable "event_type" {
+  type    = string
+  default = "google.cloud.pubsub.topic.v1.messagePublished"
+}
+
+
+variable "vpc_connector_egress_settings" {
+  type    = string
+  default = "PRIVATE_RANGES_ONLY"
+}
