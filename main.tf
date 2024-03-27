@@ -238,9 +238,6 @@ resource "google_storage_bucket_object" "ziparchive" {
   bucket = google_storage_bucket.yash_cl_bucket291_b.name
   source = var.src
 }
-resource "google_project_service" "serverless_vpc" {
-  service = "vpcaccess.googleapis.com"
-}
 
 resource "google_vpc_access_connector" "vpcconnector" {
   name          = "vpcconnector"
@@ -252,7 +249,6 @@ resource "google_vpc_access_connector" "vpcconnector" {
   max_instances = var.max_instances
 
 
-  depends_on = [google_project_service.serverless_vpc]
 }
 resource "google_pubsub_subscription_iam_binding" "subscription_binding" {
   project      = var.project_id
