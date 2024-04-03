@@ -14,7 +14,7 @@ variable "region" {
 
 variable "vpc_name" {
   description = "Name of the VPC"
-  default     = "my-vpc-1"
+  default     = "my-vpc-3"
 }
 
 variable "webapp_subnet_name" {
