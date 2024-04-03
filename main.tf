@@ -42,21 +42,17 @@ resource "google_compute_firewall" "allow_webapp" {
     protocol = var.protocol
     ports    = [var.webapp_port]
   }
-  allow {
-    protocol = var.protocol
-    ports    = ["443"]
-  }
 
-  source_ranges = [var.source_ranges]
-  # source_ranges = [google_compute_global_address.default.address]
-  # depends_on    = [google_compute_global_address.default]
+  # source_ranges = [var.source_ranges]
+  source_ranges = [var.source_ranges_lb_1, var.source_ranges_lb_2]
+
 }
 
 resource "google_compute_firewall" "restrict_ssh" {
   name    = "restrict-ssh"
   network = google_compute_network.my_vpc.id
 
-  allow {
+  deny {
     protocol = var.protocol
     ports    = [var.restrict_port]
   }
@@ -128,7 +124,7 @@ resource "google_compute_region_instance_template" "template" {
   network_interface {
     network    = google_compute_network.my_vpc.id
     subnetwork = google_compute_subnetwork.webapp_subnet.id
-    # access_config {}
+    access_config {}
 
   }
   service_account {
@@ -151,13 +147,13 @@ resource "google_compute_region_instance_template" "template" {
 # Compute Health Check
 resource "google_compute_health_check" "health_check" {
   name                = "web-health-check"
-  check_interval_sec  = 30
-  timeout_sec         = 10
-  healthy_threshold   = 2
-  unhealthy_threshold = 2
+  check_interval_sec  = var.check_interval_sec
+  timeout_sec         = var.timeout_sec
+  healthy_threshold   = var.healthy_threshold
+  unhealthy_threshold = var.unhealthy_threshold
   http_health_check {
-    port               = 3000
-    request_path       = "/healthz"
+    port               = var.webapp_port_int
+    request_path       = var.request_path
     port_specification = "USE_FIXED_PORT"
     proxy_header       = "NONE"
   }
@@ -169,8 +165,8 @@ resource "google_compute_region_autoscaler" "autoscaler" {
   name   = "web-autoscaler"
   target = google_compute_region_instance_group_manager.manager.id
   autoscaling_policy {
-    min_replicas    = 1
-    max_replicas    = 3
+    min_replicas    = 3
+    max_replicas    = 6
     cooldown_period = 80
     cpu_utilization {
       target = 0.05
@@ -191,7 +187,7 @@ resource "google_compute_region_instance_group_manager" "manager" {
   }
   named_port {
     name = "http"
-    port = 3000
+    port = var.webapp_port_int
   }
 
   auto_healing_policies {
@@ -200,22 +196,22 @@ resource "google_compute_region_instance_group_manager" "manager" {
   }
 }
 
-resource "google_compute_firewall" "allow_lb" {
-  name        = "allow-lb"
-  network     = google_compute_network.my_vpc.id
-  direction   = "INGRESS"
-  priority    = 1000
-  target_tags = ["allow-health-check", "http-server", "https-server", "lb-health-check"]
+# resource "google_compute_firewall" "allow_lb" {
+#   name        = "allow-lb"
+#   network     = google_compute_network.my_vpc.id
+#   direction   = "INGRESS"
+#   priority    = 1000
+#   target_tags = ["allow-health-check", "http-server", "https-server", "lb-health-check"]
 
-  allow {
-    protocol = "tcp"
-    ports    = ["443", "3000"]
-  }
+#   allow {
+#     protocol = "tcp"
+#     ports    = ["443", "3000"]
+#   }
 
-  source_ranges = [var.source_ranges]
-  # source_ranges = [google_compute_global_address.default.address]
-  # depends_on    = [google_compute_global_address.default]
-}
+#   source_ranges = [var.source_ranges]
+#   # source_ranges = [google_compute_global_address.default.address]
+#   # depends_on    = [google_compute_global_address.default]
+# }
 
 resource "google_compute_global_address" "default" {
   name         = "address-name"
@@ -226,7 +222,7 @@ resource "google_compute_global_address" "default" {
 resource "google_compute_global_forwarding_rule" "forwarding_rule" {
   name                  = "web-forwarding-rule"
   target                = google_compute_target_https_proxy.proxy.id
-  port_range            = "443"
+  port_range            = var.https_port
   ip_address            = google_compute_global_address.default.address
   load_balancing_scheme = "EXTERNAL"
   ip_protocol           = "TCP"
@@ -308,7 +304,7 @@ resource "google_compute_managed_ssl_certificate" "lb_default" {
   name = "myservice-ssl-cert"
 
   managed {
-    domains = ["yashnahata.me"]
+    domains = [var.domains]
   }
 }
 
