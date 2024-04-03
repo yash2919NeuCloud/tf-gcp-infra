@@ -70,6 +70,14 @@ variable "webapp_port" {
   description = "Allowed port for the webapp"
   default     = "3000"
 }
+variable "webapp_port_int" {
+  description = "Allowed port for the webapp"
+  default     = 3000
+}
+variable "https_port" {
+  description = "Allowed port for the https"
+  default     = "443"
+}
 
 variable "restrict_port" {
   description = "Blocked port for the webapp"
@@ -191,7 +199,12 @@ variable "dns_record" {
   type        = string
   default     = "yashnahata.me."
 }
+variable "domains" {
+  description = "domains"
+  type        = string
+  default     = "yashnahata.me"
 
+}
 variable "managed_zone" {
   description = "managed_zone"
   type        = string
@@ -307,3 +320,40 @@ variable "vpc_connector_egress_settings" {
   type    = string
   default = "PRIVATE_RANGES_ONLY"
 }
+
+
+variable "request_path" {
+  type    = string
+  default = "/healthz"
+
+}
+
+variable "check_interval_sec" {
+  type    = number
+  default = 30
+}
+
+variable "timeout_sec" {
+  type    = number
+  default = 10
+}
+
+variable "unhealthy_threshold" {
+  type    = number
+  default = 2
+}
+
+variable "healthy_threshold" {
+  type    = number
+  default = 2
+}
+
+variable "source_ranges_lb_1" {
+  description = "Source IP ranges for the firewall rule"
+  default     = "130.211.0.0/22"
+}
+variable "source_ranges_lb_2" {
+  description = "Source IP ranges for the firewall rule"
+  default     = "35.191.0.0/16"
+}
+
