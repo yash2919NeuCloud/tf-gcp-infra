@@ -57,53 +57,231 @@ resource "google_compute_firewall" "restrict_ssh" {
   source_ranges = [var.source_ranges]
 }
 
-# resource "google_project_service" "service_networking" {
-#   service = "servicenetworking.googleapis.com"
-# }
+
 
 resource "google_service_account" "service_account" {
   account_id   = "service-account-1"
   display_name = "Service Account"
 }
-resource "google_compute_instance" "instance-1" {
-  machine_type = var.machine_type
-  name         = var.instance_name
-  tags         = var.tags
-  zone         = var.zone
+
+
+# resource "google_compute_instance" "instance-1" {
+#   machine_type = var.machine_type
+#   name         = var.instance_name
+#   tags         = var.tags
+#   zone         = var.zone
+#   metadata_startup_script = templatefile("./startup.tpl", {
+#     db_host     = google_sql_database_instance.example_instance.first_ip_address,
+#     db_password = random_password.webapp_db_password.result,
+#     db_database = google_sql_database.webapp_db.name,
+#     db_user     = google_sql_user.webapp_db_user.name
+#   })
+
+#   service_account {
+#     email  = google_service_account.service_account.email
+#     scopes = ["cloud-platform"]
+#   }
+
+#   depends_on = [
+#     google_sql_database_instance.example_instance
+#   ]
+
+#   boot_disk {
+#     device_name = "Vm1"
+
+#     initialize_params {
+#       image = var.boot_disk_image
+#       size  = var.boot_disk_size
+#       type  = var.boot_disk_type
+#     }
+#   }
+
+#   network_interface {
+#     subnetwork = google_compute_subnetwork.webapp_subnet.id
+#     access_config {
+#       network_tier = "PREMIUM"
+#     }
+
+#   }
+# }
+# Regional Compute Instance Template
+resource "google_compute_region_instance_template" "template" {
+  name         = "instance-1"
+  machine_type = "e2-medium"
+
+  disk {
+    source_image = var.boot_disk_image
+    auto_delete  = true
+    boot         = true
+    # type         = "pd-standard"
+    disk_size_gb = var.boot_disk_size
+  }
+
+  network_interface {
+    network    = google_compute_network.my_vpc.id
+    subnetwork = google_compute_subnetwork.webapp_subnet.id
+    access_config {}
+  }
+  service_account {
+    email  = google_service_account.service_account.email
+    scopes = ["cloud-platform"]
+  }
+  depends_on = [
+    google_sql_database_instance.example_instance
+  ]
+
   metadata_startup_script = templatefile("./startup.tpl", {
     db_host     = google_sql_database_instance.example_instance.first_ip_address,
     db_password = random_password.webapp_db_password.result,
     db_database = google_sql_database.webapp_db.name,
     db_user     = google_sql_user.webapp_db_user.name
   })
+  tags = ["allow-health-check", "http-server", "https-server", "lb-health-check", ]
+}
 
-  service_account {
-    email  = google_service_account.service_account.email
-    scopes = ["cloud-platform"]
+# Compute Health Check
+resource "google_compute_health_check" "health_check" {
+  name               = "web-health-check"
+  check_interval_sec = 30
+  timeout_sec        = 10
+  http_health_check {
+    port         = 3000
+    request_path = "/healthz"
   }
 
-  depends_on = [
-    google_sql_database_instance.example_instance
-  ]
+}
 
-  boot_disk {
-    device_name = "Vm1"
 
-    initialize_params {
-      image = var.boot_disk_image
-      size  = var.boot_disk_size
-      type  = var.boot_disk_type
+resource "google_compute_region_autoscaler" "autoscaler" {
+  name   = "web-autoscaler"
+  target = google_compute_region_instance_group_manager.manager.id
+  autoscaling_policy {
+    min_replicas    = 1
+    max_replicas    = 3
+    cooldown_period = 80
+    cpu_utilization {
+      target = 0.05
     }
   }
+}
 
-  network_interface {
-    subnetwork = google_compute_subnetwork.webapp_subnet.id
-    access_config {
-      network_tier = "PREMIUM"
-    }
+
+resource "google_compute_region_instance_group_manager" "manager" {
+  name               = "web-instance-group-manager"
+  base_instance_name = "web-instance"
+  target_size        = 2
+
+
+  version {
+    instance_template = google_compute_region_instance_template.template.id
+    name              = "primary"
+  }
+  named_port {
+    name = "http"
+    port = 3000
+  }
+
+  auto_healing_policies {
+    health_check      = google_compute_health_check.health_check.id
+    initial_delay_sec = 250
+  }
+}
+
+resource "google_compute_firewall" "allow_lb" {
+  name      = "allow-lb"
+  network   = google_compute_network.my_vpc.id
+  direction = "INGRESS"
+  priority  = 1000
+
+  allow {
+    protocol = "tcp"
+    ports    = ["80", "443", "3000"]
+  }
+
+  source_ranges = ["130.211.0.0/22", "35.191.0.0/16"]
+}
+
+resource "google_compute_global_address" "default" {
+  name         = "address-name"
+  address_type = "EXTERNAL"
+
+}
+
+resource "google_compute_global_forwarding_rule" "forwarding_rule" {
+  name                  = "web-forwarding-rule"
+  target                = google_compute_target_http_proxy.proxy.self_link
+  port_range            = "3000-3000"
+  ip_address            = google_compute_global_address.default.address
+  load_balancing_scheme = "EXTERNAL"
+  ip_protocol           = "TCP"
+}
+
+
+resource "google_compute_url_map" "url_map" {
+  name            = "web-url-map"
+  default_service = google_compute_backend_service.backend_service.id
+}
+
+resource "google_compute_backend_service" "backend_service" {
+  name          = "web-backend-service"
+  protocol      = "HTTP"
+  port_name     = "http"
+  timeout_sec   = 30
+  health_checks = [google_compute_health_check.health_check.id]
+  backend {
+    group           = google_compute_region_instance_group_manager.manager.instance_group
+    capacity_scaler = 1.0
+    balancing_mode  = "UTILIZATION"
 
   }
 }
+
+resource "google_compute_target_http_proxy" "proxy" {
+  name    = "web-target-proxy"
+  url_map = google_compute_url_map.url_map.id
+}
+
+
+
+# resource "google_compute_instance" "instance-1" {
+#   machine_type = var.machine_type
+#   name         = var.instance_name
+#   tags         = var.tags
+#   zone         = var.zone
+#   metadata_startup_script = templatefile("./startup.tpl", {
+#     db_host     = google_sql_database_instance.example_instance.first_ip_address,
+#     db_password = random_password.webapp_db_password.result,
+#     db_database = google_sql_database.webapp_db.name,
+#     db_user     = google_sql_user.webapp_db_user.name
+#   })
+
+#   service_account {
+#     email  = google_service_account.service_account.email
+#     scopes = ["cloud-platform"]
+#   }
+
+#   depends_on = [
+#     google_sql_database_instance.example_instance
+#   ]
+
+#   boot_disk {
+#     device_name = "Vm1"
+
+#     initialize_params {
+#       image = var.boot_disk_image
+#       size  = var.boot_disk_size
+#       type  = var.boot_disk_type
+#     }
+#   }
+
+#   network_interface {
+#     subnetwork = google_compute_subnetwork.webapp_subnet.id
+#     access_config {
+#       network_tier = "PREMIUM"
+#     }
+
+#   }
+# }
 
 resource "google_project_iam_binding" "logging_admin_binding" {
   project = var.project_id
@@ -147,7 +325,8 @@ resource "google_dns_record_set" "dns_record" {
   type         = "A"
   ttl          = var.ttl
   managed_zone = var.managed_zone
-  rrdatas      = [google_compute_instance.instance-1.network_interface.0.access_config.0.nat_ip]
+  rrdatas      = [google_compute_global_address.default.address]
+  depends_on   = [google_compute_global_address.default]
 }
 
 
@@ -297,7 +476,7 @@ resource "google_cloudfunctions2_function" "cloud_function" {
     retry_policy   = var.retry_policy
   }
 
-  depends_on = [google_compute_instance.instance-1]
+  # depends_on = [google]
 
 
 }
