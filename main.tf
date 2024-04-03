@@ -12,10 +12,11 @@ resource "google_compute_network" "my_vpc" {
 }
 
 resource "google_compute_subnetwork" "webapp_subnet" {
-  name          = var.webapp_subnet_name
-  network       = google_compute_network.my_vpc.id
-  ip_cidr_range = var.webapp_subnet_cidr
-  region        = var.region
+  name                     = var.webapp_subnet_name
+  network                  = google_compute_network.my_vpc.id
+  ip_cidr_range            = var.webapp_subnet_cidr
+  region                   = var.region
+  private_ip_google_access = true
 }
 
 resource "google_compute_subnetwork" "db" {
@@ -34,25 +35,32 @@ resource "google_compute_route" "default_route" {
 
 # adding port 3000 to the firewall
 resource "google_compute_firewall" "allow_webapp" {
-  name    = "allow-webapp"
-  network = google_compute_network.my_vpc.id
-
+  name        = "allow-webapp"
+  network     = google_compute_network.my_vpc.id
+  target_tags = ["allow-health-check", "http-server", "https-server", "lb-health-check"]
   allow {
     protocol = var.protocol
     ports    = [var.webapp_port]
   }
+  allow {
+    protocol = var.protocol
+    ports    = ["443"]
+  }
 
   source_ranges = [var.source_ranges]
+  # source_ranges = [google_compute_global_address.default.address]
+  # depends_on    = [google_compute_global_address.default]
 }
 
 resource "google_compute_firewall" "restrict_ssh" {
   name    = "restrict-ssh"
   network = google_compute_network.my_vpc.id
 
-  deny {
+  allow {
     protocol = var.protocol
     ports    = [var.restrict_port]
   }
+
 
   source_ranges = [var.source_ranges]
 }
@@ -120,7 +128,8 @@ resource "google_compute_region_instance_template" "template" {
   network_interface {
     network    = google_compute_network.my_vpc.id
     subnetwork = google_compute_subnetwork.webapp_subnet.id
-    access_config {}
+    # access_config {}
+
   }
   service_account {
     email  = google_service_account.service_account.email
@@ -136,17 +145,21 @@ resource "google_compute_region_instance_template" "template" {
     db_database = google_sql_database.webapp_db.name,
     db_user     = google_sql_user.webapp_db_user.name
   })
-  tags = ["allow-health-check", "http-server", "https-server", "lb-health-check", ]
+  tags = ["allow-health-check", "http-server", "https-server", "lb-health-check"]
 }
 
 # Compute Health Check
 resource "google_compute_health_check" "health_check" {
-  name               = "web-health-check"
-  check_interval_sec = 30
-  timeout_sec        = 10
+  name                = "web-health-check"
+  check_interval_sec  = 30
+  timeout_sec         = 10
+  healthy_threshold   = 2
+  unhealthy_threshold = 2
   http_health_check {
-    port         = 3000
-    request_path = "/healthz"
+    port               = 3000
+    request_path       = "/healthz"
+    port_specification = "USE_FIXED_PORT"
+    proxy_header       = "NONE"
   }
 
 }
@@ -169,7 +182,7 @@ resource "google_compute_region_autoscaler" "autoscaler" {
 resource "google_compute_region_instance_group_manager" "manager" {
   name               = "web-instance-group-manager"
   base_instance_name = "web-instance"
-  target_size        = 2
+  # target_size        = 2
 
 
   version {
@@ -188,17 +201,20 @@ resource "google_compute_region_instance_group_manager" "manager" {
 }
 
 resource "google_compute_firewall" "allow_lb" {
-  name      = "allow-lb"
-  network   = google_compute_network.my_vpc.id
-  direction = "INGRESS"
-  priority  = 1000
+  name        = "allow-lb"
+  network     = google_compute_network.my_vpc.id
+  direction   = "INGRESS"
+  priority    = 1000
+  target_tags = ["allow-health-check", "http-server", "https-server", "lb-health-check"]
 
   allow {
     protocol = "tcp"
-    ports    = ["80", "443", "3000"]
+    ports    = ["443", "3000"]
   }
 
-  source_ranges = ["130.211.0.0/22", "35.191.0.0/16"]
+  source_ranges = [var.source_ranges]
+  # source_ranges = [google_compute_global_address.default.address]
+  # depends_on    = [google_compute_global_address.default]
 }
 
 resource "google_compute_global_address" "default" {
@@ -209,8 +225,8 @@ resource "google_compute_global_address" "default" {
 
 resource "google_compute_global_forwarding_rule" "forwarding_rule" {
   name                  = "web-forwarding-rule"
-  target                = google_compute_target_http_proxy.proxy.self_link
-  port_range            = "3000-3000"
+  target                = google_compute_target_https_proxy.proxy.id
+  port_range            = "443"
   ip_address            = google_compute_global_address.default.address
   load_balancing_scheme = "EXTERNAL"
   ip_protocol           = "TCP"
@@ -236,9 +252,15 @@ resource "google_compute_backend_service" "backend_service" {
   }
 }
 
-resource "google_compute_target_http_proxy" "proxy" {
+resource "google_compute_target_https_proxy" "proxy" {
   name    = "web-target-proxy"
   url_map = google_compute_url_map.url_map.id
+  ssl_certificates = [
+    google_compute_managed_ssl_certificate.lb_default.name
+  ]
+  depends_on = [
+    google_compute_managed_ssl_certificate.lb_default
+  ]
 }
 
 
@@ -282,6 +304,13 @@ resource "google_compute_target_http_proxy" "proxy" {
 
 #   }
 # }
+resource "google_compute_managed_ssl_certificate" "lb_default" {
+  name = "myservice-ssl-cert"
+
+  managed {
+    domains = ["yashnahata.me"]
+  }
+}
 
 resource "google_project_iam_binding" "logging_admin_binding" {
   project = var.project_id
