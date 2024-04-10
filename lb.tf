@@ -2,8 +2,8 @@
 # Regional Compute Instance Template
 resource "google_compute_region_instance_template" "template" {
   name         = "instance-1"
-  machine_type = "e2-medium"
-
+  machine_type = var.machine_type
+  region       = var.region
   disk {
     source_image = var.boot_disk_image
     auto_delete  = true
@@ -59,11 +59,11 @@ resource "google_compute_region_autoscaler" "autoscaler" {
   name   = "web-autoscaler"
   target = google_compute_region_instance_group_manager.manager.id
   autoscaling_policy {
-    min_replicas    = 3
-    max_replicas    = 6
-    cooldown_period = 80
+    min_replicas    = var.min_replicas
+    max_replicas    = var.max_replicas
+    cooldown_period = var.cooldown_period
     cpu_utilization {
-      target = 0.05
+      target = var.cpu_utilization
     }
   }
 }
@@ -72,6 +72,7 @@ resource "google_compute_region_autoscaler" "autoscaler" {
 resource "google_compute_region_instance_group_manager" "manager" {
   name               = "web-instance-group-manager"
   base_instance_name = "web-instance"
+  region             = var.region
   # target_size        = 2
 
 
@@ -132,7 +133,7 @@ resource "google_compute_backend_service" "backend_service" {
   name          = "web-backend-service"
   protocol      = "HTTP"
   port_name     = "http"
-  timeout_sec   = 30
+  timeout_sec   = var.backend_service_timeout_seconds
   health_checks = [google_compute_health_check.health_check.id]
   backend {
     group           = google_compute_region_instance_group_manager.manager.instance_group

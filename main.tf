@@ -77,6 +77,9 @@ resource "google_compute_managed_ssl_certificate" "lb_default" {
   managed {
     domains = [var.domains]
   }
+  lifecycle {
+    prevent_destroy = true
+  }
 }
 
 resource "google_project_iam_binding" "logging_admin_binding" {

@@ -237,6 +237,11 @@ variable "timeout_seconds" {
   default = "60"
 }
 
+variable "backend_service_timeout_seconds" {
+  type    = number
+  default = 30
+}
+
 variable "available_memory" {
   type    = string
   default = "256M"
@@ -357,3 +362,53 @@ variable "source_ranges_lb_2" {
   default     = "35.191.0.0/16"
 }
 
+variable "purpose" {
+  type    = string
+  default = "ENCRYPT_DECRYPT"
+
+}
+
+variable "rotation_period" {
+  type    = string
+  default = "2592000s"
+}
+
+
+variable "role_kms" {
+  type    = string
+  default = "roles/cloudkms.cryptoKeyEncrypterDecrypter"
+
+}
+
+variable "crypto_key_storage_binding" {
+  type = string
+}
+
+variable "crypto_vm_key_binding" {
+  type = string
+}
+
+variable "service_cloud_sql" {
+  type    = string
+  default = "sqladmin.googleapis.com"
+}
+variable "cpu_utilization" {
+  type    = number
+  default = 0.05
+
+}
+variable "cooldown_period" {
+  type    = number
+  default = 60
+
+}
+variable "max_replicas" {
+  type    = number
+  default = 6
+
+}
+variable "min_replicas" {
+  type    = number
+  default = 3
+
+}
