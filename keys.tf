@@ -7,9 +7,9 @@ resource "google_kms_key_ring" "key_ring" {
   name     = "key-ring-${random_string.rdm_sting.result}"
   project  = var.project_id
   location = var.region
-  lifecycle {
-    prevent_destroy = true
-  }
+  # lifecycle {
+  #   prevent_destroy = true
+  # }
 }
 
 resource "google_kms_crypto_key" "storage_crypto_key" {
@@ -17,9 +17,9 @@ resource "google_kms_crypto_key" "storage_crypto_key" {
   key_ring        = google_kms_key_ring.key_ring.id
   rotation_period = var.rotation_period
   purpose         = var.purpose
-  lifecycle {
-    prevent_destroy = true
-  }
+  # lifecycle {
+  #   prevent_destroy = true
+  # }
 
 }
 
@@ -38,9 +38,9 @@ resource "google_kms_crypto_key" "vm_key" {
   key_ring        = google_kms_key_ring.key_ring.id
   rotation_period = var.rotation_period
   purpose         = var.purpose
-  lifecycle {
-    prevent_destroy = true
-  }
+  # lifecycle {
+  #   prevent_destroy = true
+  # }
 }
 resource "google_kms_crypto_key_iam_binding" "crypto_vm_key_binding" {
   # provider      = google-beta
@@ -59,9 +59,9 @@ resource "google_kms_crypto_key" "sql_crypto_key" {
   key_ring        = google_kms_key_ring.key_ring.id
   rotation_period = var.rotation_period
   purpose         = var.purpose
-  lifecycle {
-    prevent_destroy = true
-  }
+  # lifecycle {
+  #   prevent_destroy = true
+  # }
 }
 
 resource "google_project_service_identity" "service_cloud_sql" {
