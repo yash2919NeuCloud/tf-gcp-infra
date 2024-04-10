@@ -40,11 +40,11 @@ resource "google_compute_region_instance_template" "template" {
 
 # Compute Health Check
 resource "google_compute_health_check" "health_check" {
-  name                = "web-health-check"
-  check_interval_sec  = var.check_interval_sec
-  timeout_sec         = var.timeout_sec
-  healthy_threshold   = var.healthy_threshold
-  unhealthy_threshold = var.unhealthy_threshold
+  name               = "web-health-check"
+  check_interval_sec = var.check_interval_sec
+  timeout_sec        = var.timeout_sec
+  # healthy_threshold   = var.healthy_threshold
+  # unhealthy_threshold = var.unhealthy_threshold
   http_health_check {
     port               = var.webapp_port_int
     request_path       = var.request_path
@@ -74,7 +74,7 @@ resource "google_compute_region_instance_group_manager" "manager" {
   name               = "web-instance-group-manager"
   base_instance_name = "web-instance"
   region             = var.region
-  # target_size        = 2
+  target_size        = 3
 
 
   version {
