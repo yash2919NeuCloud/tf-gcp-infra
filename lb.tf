@@ -58,6 +58,7 @@ resource "google_compute_health_check" "health_check" {
 resource "google_compute_region_autoscaler" "autoscaler" {
   name   = "web-autoscaler"
   target = google_compute_region_instance_group_manager.manager.id
+  region = var.region
   autoscaling_policy {
     min_replicas    = var.min_replicas
     max_replicas    = var.max_replicas
